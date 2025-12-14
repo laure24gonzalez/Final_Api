@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz API - Aplicación Interactiva</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🎯 Quiz Interactivo</h1>
+            <p class="subtitle">API REST con FastAPI, SQLAlchemy y SQLite</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-menu">
+            <button class="nav-btn active" data-section="inicio">Inicio</button>
+            <button class="nav-btn" data-section="quiz">Tomar Quiz</button>
+            <button class="nav-btn" data-section="crear-pregunta">Crear Pregunta</button>
+            <button class="nav-btn" data-section="preguntas">Preguntas</button>
+            <button class="nav-btn" data-section="estadisticas">Estadísticas</button>
+            <button class="nav-btn" data-section="sesiones">Sesiones</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+            
+            <!-- Sección Inicio -->
+            <section id="inicio" class="section active">
+                <div class="card card-large">
+                    <h2>Bienvenido al Quiz Interactivo</h2>
+                    <p>Esta aplicación te permite:</p>
+                    <ul class="features-list">
+                        <li>📝 Tomar quizzes interactivos</li>
+                        <li>📊 Ver estadísticas de tu desempeño</li>
+                        <li>🎓 Aprender sobre diferentes temas</li>
+                        <li>⚡ Mejorar tu conocimiento</li>
+                    </ul>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <h3 id="total-questions">--</h3>
+                            <p>Preguntas Disponibles</p>
+                        </div>
+                        <div class="info-card">
+                            <h3 id="total-sessions">--</h3>
+                            <p>Sesiones Completadas</p>
+                        </div>
+                        <div class="info-card">
+                            <h3 id="avg-score">--</h3>
+                            <p>Promedio de Aciertos</p>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-lg" onclick="goToSection('quiz')">
+                        Comenzar Quiz 🚀
+                    </button>
+                </div>
+            </section>
+
+            <!-- Sección Crear Pregunta -->
+            <section id="crear-pregunta" class="section">
+                <div class="card">
+                    <h2>Crear Nueva Pregunta</h2>
+                    
+                    <form id="create-question-form" class="form-create-question">
+                        <div class="form-group">
+                            <label for="q-pregunta">Texto de la Pregunta *</label>
+                            <textarea id="q-pregunta" placeholder="Ej: ¿Cuál es la capital de Francia?" rows="3" required></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="q-categoria">Categoría *</label>
+                                <select id="q-categoria" required>
+                                    <option value="">-- Seleccionar --</option>
+                                    <option value="Tecnología">Tecnología</option>
+                                    <option value="Historia">Historia</option>
+                                    <option value="Ciencia">Ciencia</option>
+                                    <option value="Geografía">Geografía</option>
+                                    <option value="Literatura">Literatura</option>
+                                    <option value="Deporte">Deporte</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="q-dificultad">Dificultad *</label>
+                                <select id="q-dificultad" required>
+                                    <option value="">-- Seleccionar --</option>
+                                    <option value="fácil">Fácil</option>
+                                    <option value="medio">Medio</option>
+                                    <option value="difícil">Difícil</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 30px; margin-bottom: 20px; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Opciones de Respuesta</h3>
+                        
+                        <div class="form-group">
+                            <label for="q-opcion-1">Opción 1 *</label>
+                            <input type="text" id="q-opcion-1" placeholder="Primera opción de respuesta" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="q-opcion-2">Opción 2 *</label>
+                            <input type="text" id="q-opcion-2" placeholder="Segunda opción de respuesta" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="q-opcion-3">Opción 3 *</label>
+                            <input type="text" id="q-opcion-3" placeholder="Tercera opción de respuesta" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="q-opcion-4">Opción 4 *</label>
+                            <input type="text" id="q-opcion-4" placeholder="Cuarta opción de respuesta" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="q-respuesta-correcta">Respuesta Correcta * (Selecciona el índice: 0, 1, 2 o 3)</label>
+                            <select id="q-respuesta-correcta" required>
+                                <option value="">-- Seleccionar --</option>
+                                <option value="0">Opción 1</option>
+                                <option value="1">Opción 2</option>
+                                <option value="2">Opción 3</option>
+                                <option value="3">Opción 4</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="q-explicacion">Explicación (Opcional)</label>
+                            <textarea id="q-explicacion" placeholder="Explicación de la respuesta correcta" rows="3"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg">Crear Pregunta ✓</button>
+                    </form>
+
+                    <div id="create-question-message" class="message hidden"></div>
+                </div>
+            </section>
+
+            <!-- Sección Quiz -->
+            <section id="quiz" class="section">
+                <div class="card">
+                    <h2>Tomar un Quiz</h2>
+                    
+                    <!-- Iniciar Quiz -->
+                    <div id="quiz-start" class="quiz-start">
+                        <div class="form-group">
+                            <label for="username">Tu Nombre (Opcional):</label>
+                            <input type="text" id="username" placeholder="Ej: Juan Pérez" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="num-questions">Número de Preguntas:</label>
+                            <input type="number" id="num-questions" value="5" min="1" max="20">
+                        </div>
+                        <button class="btn btn-primary" onclick="startQuiz()">Iniciar Quiz</button>
+                    </div>
+
+                    <!-- Durante el Quiz -->
+                    <div id="quiz-content" class="quiz-content hidden">
+                        <div class="quiz-header">
+                            <h3 id="quiz-title">Quiz en Progreso</h3>
+                            <div class="quiz-progress">
+                                <span id="current-question">0</span> / <span id="total-question">0</span>
+                            </div>
+                        </div>
+
+                        <div id="question-container" class="question-container">
+                            <!-- Las preguntas se cargan aquí con JavaScript -->
+                        </div>
+
+                        <div class="quiz-buttons">
+                            <button class="btn btn-secondary" onclick="previousQuestion()">← Anterior</button>
+                            <button class="btn btn-primary" onclick="nextQuestion()" id="next-btn">Siguiente →</button>
+                            <button class="btn btn-success hidden" id="finish-btn" onclick="finishQuiz()">Finalizar Quiz ✓</button>
+                        </div>
+                    </div>
+
+                    <!-- Resultados del Quiz -->
+                    <div id="quiz-results" class="quiz-results hidden">
+                        <h3>¡Quiz Completado!</h3>
+                        <div class="results-summary">
+                            <div class="result-item">
+                                <span class="label">Puntuación Final:</span>
+                                <span class="value" id="final-score">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Preguntas Correctas:</span>
+                                <span class="value" id="correct-answers">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Preguntas Respondidas:</span>
+                                <span class="value" id="total-answered">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Tiempo Total:</span>
+                                <span class="value" id="total-time">--</span>
+                            </div>
+                        </div>
+                        
+                        <div id="results-details" class="results-details">
+                            <!-- Detalles de respuestas se cargan aquí -->
+                        </div>
+
+                        <div class="quiz-buttons">
+                            <button class="btn btn-primary" onclick="goToSection('quiz')">Otro Quiz</button>
+                            <button class="btn btn-secondary" onclick="goToSection('estadisticas')">Ver Estadísticas</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección Preguntas -->
+            <section id="preguntas" class="section">
+                <div class="card">
+                    <h2>Gestión de Preguntas</h2>
+                    
+                    <div class="filters">
+                        <input type="text" id="search-question" placeholder="Buscar pregunta..." class="filter-input">
+                        <select id="filter-category" class="filter-select">
+                            <option value="">Todas las Categorías</option>
+                            <option value="Tecnología">Tecnología</option>
+                            <option value="Historia">Historia</option>
+                            <option value="Ciencia">Ciencia</option>
+                            <option value="Geografía">Geografía</option>
+                            <option value="Literatura">Literatura</option>
+                            <option value="Deporte">Deporte</option>
+                        </select>
+                        <select id="filter-difficulty" class="filter-select">
+                            <option value="">Todas las Dificultades</option>
+                            <option value="fácil">Fácil</option>
+                            <option value="medio">Medio</option>
+                            <option value="difícil">Difícil</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="loadQuestions()">Filtrar</button>
+                    </div>
+
+                    <div id="questions-list" class="questions-list">
+                        <p class="loading">Cargando preguntas...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección Estadísticas -->
+            <section id="estadisticas" class="section">
+                <div class="card">
+                    <h2>Estadísticas Globales</h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <h3>Preguntas Activas</h3>
+                            <p class="stat-value" id="stat-active-questions">--</p>
+                        </div>
+                        <div class="stat-box">
+                            <h3>Sesiones Completadas</h3>
+                            <p class="stat-value" id="stat-completed-sessions">--</p>
+                        </div>
+                        <div class="stat-box">
+                            <h3>Promedio de Aciertos</h3>
+                            <p class="stat-value" id="stat-avg-score">--</p>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    <h3>Preguntas Más Difíciles</h3>
+                    <div id="difficult-questions" class="questions-list">
+                        <p class="loading">Cargando...</p>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    <h3>Rendimiento por Categoría</h3>
+                    <div id="categories-stats" class="categories-list">
+                        <p class="loading">Cargando...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección Sesiones -->
+            <section id="sesiones" class="section">
+                <div class="card">
+                    <h2>Historial de Sesiones</h2>
+                    
+                    <div id="sessions-list" class="sessions-list">
+                        <p class="loading">Cargando sesiones...</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 Quiz API - Desarrollado con FastAPI, SQLAlchemy y SQLite</p>
+        </footer>
+    </div>
+
+    <!-- Modal de Edición de Preguntas -->
+    <div id="edit-question-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Editar Pregunta</h2>
+                <button class="close-btn" onclick="closeEditModal()">×</button>
+            </div>
+            
+            <form id="edit-question-form" onsubmit="handleEditQuestion(event)">
+                <input type="hidden" id="edit-q-id">
+                
+                <div class="form-group">
+                    <label for="edit-q-pregunta">Pregunta *</label>
+                    <textarea id="edit-q-pregunta" required></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-q-categoria">Categoría *</label>
+                        <select id="edit-q-categoria" required>
+                            <option value="">Selecciona una categoría</option>
+                            <option value="Tecnología">Tecnología</option>
+                            <option value="Historia">Historia</option>
+                            <option value="Ciencia">Ciencia</option>
+                            <option value="Geografía">Geografía</option>
+                            <option value="Literatura">Literatura</option>
+                            <option value="Matemáticas">Matemáticas</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-q-dificultad">Dificultad *</label>
+                        <select id="edit-q-dificultad" required>
+                            <option value="">Selecciona dificultad</option>
+                            <option value="fácil">Fácil</option>
+                            <option value="medio">Medio</option>
+                            <option value="difícil">Difícil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <fieldset class="options-fieldset">
+                    <legend>Opciones *</legend>
+                    <div class="form-group">
+                        <label for="edit-q-opcion-1">Opción 1</label>
+                        <input type="text" id="edit-q-opcion-1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-q-opcion-2">Opción 2</label>
+                        <input type="text" id="edit-q-opcion-2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-q-opcion-3">Opción 3</label>
+                        <input type="text" id="edit-q-opcion-3" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-q-opcion-4">Opción 4</label>
+                        <input type="text" id="edit-q-opcion-4" required>
+                    </div>
+                </fieldset>
+
+                <div class="form-group">
+                    <label for="edit-q-respuesta-correcta">Respuesta Correcta (0-3) *</label>
+                    <select id="edit-q-respuesta-correcta" required>
+                        <option value="">Selecciona la opción correcta</option>
+                        <option value="0">Opción 1</option>
+                        <option value="1">Opción 2</option>
+                        <option value="2">Opción 3</option>
+                        <option value="3">Opción 4</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-q-explicacion">Explicación</label>
+                    <textarea id="edit-q-explicacion" placeholder="Explicación opcional (máx 500 caracteres)"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">✕ Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
