@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, JSON, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from ..database import Base
 
 
@@ -14,7 +14,7 @@ class Question(Base):
     explicacion = Column(Text, nullable=True)
     categoria = Column(String, nullable=False)  # "Tecnología", "Historia", "Ciencia", etc.
     dificultad = Column(String, nullable=False)  # "fácil", "medio", "difícil"
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
 
     answers = relationship("Answer", back_populates="question", cascade="all, delete-orphan")
