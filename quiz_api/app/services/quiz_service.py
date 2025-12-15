@@ -1,13 +1,14 @@
 """
 Servicios de negocio para operaciones de quiz
 """
+from typing import Any, cast
 from sqlalchemy.orm import Session
 from ..models.question import Question
 from ..models.answer import Answer
 from ..models.quiz_session import QuizSession
 
 
-def validate_question_data(pregunta: str, opciones: list, respuesta_correcta: int, categoria: str, dificultad: str):
+def validate_question_data(pregunta: str, opciones: list[str], respuesta_correcta: int, categoria: str, dificultad: str) -> None:
     """
     Validar datos de una pregunta
     
@@ -59,8 +60,6 @@ def canonical_category(value: str) -> str:
 
     Returns canonical string or raises ValueError if unknown.
     """
-    if value is None:
-        return None
     key = _normalize_text(value)
     if key in _CATEGORY_MAP:
         return _CATEGORY_MAP[key]
@@ -68,15 +67,13 @@ def canonical_category(value: str) -> str:
 
 
 def canonical_difficulty(value: str) -> str:
-    if value is None:
-        return None
     key = _normalize_text(value)
     if key in _DIFFICULTY_MAP:
         return _DIFFICULTY_MAP[key]
     raise ValueError(f"Dificultad debe ser una de: {', '.join(CANONICAL_DIFFICULTIES)}")
 
 
-def calculate_session_score(session: QuizSession, db: Session) -> tuple:
+def calculate_session_score(session: QuizSession, db: Session) -> tuple[int, int, int, int | None]:
     """
     Calcular la puntuación de una sesión basada en sus respuestas
     
@@ -90,8 +87,9 @@ def calculate_session_score(session: QuizSession, db: Session) -> tuple:
     answers = db.query(Answer).filter(Answer.quiz_session_id == session.id).all()
     
     preguntas_respondidas = len(answers)
-    preguntas_correctas = sum(1 for a in answers if a.es_correcta)
-    tiempo_total = sum(a.tiempo_respuesta_segundos for a in answers if a.tiempo_respuesta_segundos)
+    preguntas_correctas = sum(1 for a in answers if cast(bool, a.es_correcta))
+    tiempos = [cast(int, a.tiempo_respuesta_segundos) for a in answers]  # type: ignore
+    tiempo_total = sum(tiempos) if tiempos else 0
     
     # Calcular puntuación como porcentaje
     puntuacion = (preguntas_correctas * 100 // preguntas_respondidas) if preguntas_respondidas > 0 else 0
@@ -99,7 +97,7 @@ def calculate_session_score(session: QuizSession, db: Session) -> tuple:
     return puntuacion, preguntas_respondidas, preguntas_correctas, tiempo_total if tiempo_total > 0 else None
 
 
-def get_question_statistics(question_id: int, db: Session) -> dict:
+def get_question_statistics(question_id: int, db: Session) -> dict[str, Any]:
     """
     Obtener estadísticas de una pregunta específica
     
@@ -116,7 +114,7 @@ def get_question_statistics(question_id: int, db: Session) -> dict:
     
     answers = db.query(Answer).filter(Answer.question_id == question_id).all()
     total = len(answers)
-    correctas = sum(1 for a in answers if a.es_correcta)
+    correctas = sum(1 for a in answers if cast(bool, a.es_correcta))
     tasa_acierto = (correctas / total * 100) if total > 0 else 0
     
     return {
@@ -130,7 +128,7 @@ def get_question_statistics(question_id: int, db: Session) -> dict:
     }
 
 
-def get_category_statistics(categoria: str, db: Session) -> dict:
+def get_category_statistics(categoria: str, db: Session) -> dict[str, Any]:
     """
     Obtener estadísticas de una categoría
     
@@ -152,7 +150,7 @@ def get_category_statistics(categoria: str, db: Session) -> dict:
     
     answers = db.query(Answer).filter(Answer.question_id.in_(preguntas_ids)).all()
     total = len(answers)
-    correctas = sum(1 for a in answers if a.es_correcta)
+    correctas = sum(1 for a in answers if cast(bool, a.es_correcta))
     promedio_aciertos = (correctas / total * 100) if total > 0 else 0
     
     return {

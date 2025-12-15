@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Dict
+from typing import Any, cast
 from ..database import get_db
 from ..models.quiz_session import QuizSession
 from ..models.answer import Answer
@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/global")
-def statistics_global(db: Session = Depends(get_db)):
+def statistics_global(db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Obtener estadísticas globales del sistema.
     
@@ -38,13 +38,13 @@ def statistics_global(db: Session = Depends(get_db)):
     # Promedio de aciertos general
     sesiones = db.query(QuizSession).filter(QuizSession.estado == "completado").all()
     promedio_aciertos = (
-        sum(s.puntuacion_total for s in sesiones) / len(sesiones)
+        sum(cast(int, s.puntuacion_total) for s in sesiones) / len(sesiones)
         if sesiones else 0
     )
     
     # Categorías más difíciles (con mayor tasa de error)
     categorias_query = db.query(Question.categoria).filter(Question.is_active == True).distinct().all()
-    categorias_dificiles = []
+    categorias_dificiles: list[dict[str, Any]] = []
     
     for (cat,) in categorias_query:
         preguntas_cat = db.query(Question.id).filter(Question.categoria == cat, Question.is_active == True).all()
@@ -53,25 +53,25 @@ def statistics_global(db: Session = Depends(get_db)):
         if preguntas_ids:
             answers_cat = db.query(Answer).filter(Answer.question_id.in_(preguntas_ids)).all()
             total_resp = len(answers_cat)
-            correctas = sum(1 for a in answers_cat if a.es_correcta)
+            correctas = sum(1 for a in answers_cat if cast(bool, a.es_correcta))
             tasa_error = ((total_resp - correctas) / total_resp * 100) if total_resp > 0 else 0
             categorias_dificiles.append({
                 "categoria": cat,
-                "tasa_error": round(tasa_error, 2)
+                "tasa_error": round(float(tasa_error), 2)
             })
     
-    categorias_dificiles.sort(key=lambda x: x["tasa_error"], reverse=True)
+    categorias_dificiles.sort(key=lambda x: cast(float, x["tasa_error"]), reverse=True)
     
     return {
         "total_preguntas_activas": total_preguntas,
         "total_sesiones_completadas": total_sesiones,
-        "promedio_aciertos": round(promedio_aciertos, 2),
+        "promedio_aciertos": round(float(promedio_aciertos), 2),
         "categorias_dificiles": categorias_dificiles[:5]
     }
 
 
 @router.get("/session/{session_id}")
-def statistics_session(session_id: int, db: Session = Depends(get_db)):
+def statistics_session(session_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Obtener estadísticas detalladas de una sesión específica.
     
@@ -102,16 +102,16 @@ def statistics_session(session_id: int, db: Session = Depends(get_db)):
     
     # Calcular estadísticas
     total_respondidas = len(answers)
-    correctas = sum(1 for a in answers if a.es_correcta)
+    correctas = sum(1 for a in answers if cast(bool, a.es_correcta))
     porcentaje_aciertos = (correctas / total_respondidas * 100) if total_respondidas > 0 else 0
     
     tiempo_promedio = None
-    if answers and any(a.tiempo_respuesta_segundos for a in answers):
-        tiempos = [a.tiempo_respuesta_segundos for a in answers if a.tiempo_respuesta_segundos]
+    if answers:
+        tiempos = [cast(int, a.tiempo_respuesta_segundos) for a in answers]  # type: ignore
         tiempo_promedio = sum(tiempos) / len(tiempos) if tiempos else None
     
     # Resumen detallado de respuestas
-    resumen_respuestas = []
+    resumen_respuestas: list[dict[str, Any]] = []
     for answer in answers:
         question = db.query(Question).filter(Question.id == answer.question_id).first()
         resumen_respuestas.append({
@@ -126,10 +126,10 @@ def statistics_session(session_id: int, db: Session = Depends(get_db)):
         "session_id": session_id,
         "usuario": session.usuario_nombre,
         "puntuacion_final": session.puntuacion_total,
-        "porcentaje_aciertos": round(porcentaje_aciertos, 2),
+        "porcentaje_aciertos": round(float(porcentaje_aciertos), 2),
         "preguntas_respondidas": total_respondidas,
         "preguntas_correctas": correctas,
-        "tiempo_promedio_segundos": round(tiempo_promedio, 2) if tiempo_promedio else None,
+        "tiempo_promedio_segundos": round(float(tiempo_promedio), 2) if tiempo_promedio else None,
         "tiempo_total_segundos": session.tiempo_total_segundos,
         "resumen_respuestas": resumen_respuestas
     }
@@ -139,7 +139,7 @@ def statistics_session(session_id: int, db: Session = Depends(get_db)):
 def statistics_difficult_questions(
     db: Session = Depends(get_db),
     limit: int = Query(10, ge=1, le=50)
-):
+) -> list[dict[str, Any]]:
     """
     Obtener las preguntas con mayor tasa de error.
     
@@ -157,12 +157,12 @@ def statistics_difficult_questions(
     """
     preguntas = db.query(Question).filter(Question.is_active == True).all()
     
-    preguntas_dificiles = []
+    preguntas_dificiles: list[dict[str, Any]] = []
     for q in preguntas:
         answers = db.query(Answer).filter(Answer.question_id == q.id).all()
         if answers:
             total = len(answers)
-            incorrectas = sum(1 for a in answers if not a.es_correcta)
+            incorrectas = sum(1 for a in answers if not cast(bool, a.es_correcta))
             tasa_error = (incorrectas / total * 100)
             preguntas_dificiles.append({
                 "question_id": q.id,
@@ -171,15 +171,15 @@ def statistics_difficult_questions(
                 "dificultad": q.dificultad,
                 "veces_respondida": total,
                 "veces_incorrecta": incorrectas,
-                "tasa_error": round(tasa_error, 2)
+                "tasa_error": round(float(tasa_error), 2)
             })
     
-    preguntas_dificiles.sort(key=lambda x: x["tasa_error"], reverse=True)
+    preguntas_dificiles.sort(key=lambda x: cast(float, x["tasa_error"]), reverse=True)
     return preguntas_dificiles[:limit]
 
 
 @router.get("/categories")
-def statistics_by_categories(db: Session = Depends(get_db)):
+def statistics_by_categories(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     """
     Obtener rendimiento de los usuarios por categoría de pregunta.
     
@@ -197,7 +197,7 @@ def statistics_by_categories(db: Session = Depends(get_db)):
     """
     categorias = db.query(Question.categoria).filter(Question.is_active == True).distinct().all()
     
-    rendimiento = []
+    rendimiento: list[dict[str, Any]] = []
     for (categoria,) in categorias:
         preguntas = db.query(Question.id).filter(Question.categoria == categoria, Question.is_active == True).all()
         preguntas_ids = [p[0] for p in preguntas]
@@ -205,7 +205,7 @@ def statistics_by_categories(db: Session = Depends(get_db)):
         if preguntas_ids:
             answers = db.query(Answer).filter(Answer.question_id.in_(preguntas_ids)).all()
             total = len(answers)
-            correctas = sum(1 for a in answers if a.es_correcta)
+            correctas = sum(1 for a in answers if cast(bool, a.es_correcta))
             promedio_aciertos = (correctas / total * 100) if total > 0 else 0
             
             rendimiento.append({
@@ -213,8 +213,8 @@ def statistics_by_categories(db: Session = Depends(get_db)):
                 "num_preguntas": len(preguntas_ids),
                 "num_respuestas": total,
                 "aciertos": correctas,
-                "promedio_aciertos": round(promedio_aciertos, 2)
+                "promedio_aciertos": round(float(promedio_aciertos), 2)
             })
     
-    rendimiento.sort(key=lambda x: x["promedio_aciertos"], reverse=True)
+    rendimiento.sort(key=lambda x: cast(float, x["promedio_aciertos"]), reverse=True)
     return rendimiento

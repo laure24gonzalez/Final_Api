@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import cast
 from ..database import get_db
 from ..models.answer import Answer
 from ..models.question import Question
@@ -44,7 +44,7 @@ def register_answer(payload: AnswerCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Pregunta no encontrada")
     
     # Validar que respuesta_seleccionada está en rango válido
-    opciones_list = question.opciones if isinstance(question.opciones, list) else []  # type: ignore
+    opciones_list = cast(list[str], question.opciones) if isinstance(question.opciones, list) else []
     if not (0 <= payload.respuesta_seleccionada < len(opciones_list)):
         raise HTTPException(
             status_code=400,
@@ -81,7 +81,7 @@ def register_answer(payload: AnswerCreate, db: Session = Depends(get_db)):
     return answer
 
 
-@router.get("/session/{session_id}", response_model=List[AnswerRead])
+@router.get("/session/{session_id}", response_model=list[AnswerRead])
 def get_answers_by_session(
     session_id: int,
     db: Session = Depends(get_db),
@@ -166,7 +166,7 @@ def update_answer(answer_id: int, payload: AnswerCreate, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Pregunta no encontrada")
     
     # Validar que respuesta_seleccionada está en rango válido
-    opciones_list = question.opciones if isinstance(question.opciones, list) else []  # type: ignore
+    opciones_list = cast(list[str], question.opciones) if isinstance(question.opciones, list) else []
     if not (0 <= payload.respuesta_seleccionada < len(opciones_list)):
         raise HTTPException(
             status_code=400,

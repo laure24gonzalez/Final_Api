@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime
+from typing import cast
+from datetime import datetime, timezone
 from ..database import get_db
 from ..models.quiz_session import QuizSession
 from ..models.answer import Answer
-from ..schemas.quiz_session import QuizSessionCreate, QuizSessionRead, QuizSessionUpdate
+from ..schemas.quiz_session import QuizSessionCreate, QuizSessionRead
 
 router = APIRouter()
 
@@ -35,7 +35,7 @@ def create_session(payload: QuizSessionCreate, db: Session = Depends(get_db)):
     return session
 
 
-@router.get("/", response_model=List[QuizSessionRead])
+@router.get("/", response_model=list[QuizSessionRead])
 def list_sessions(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
@@ -108,18 +108,19 @@ def complete_session(session_id: int, db: Session = Depends(get_db)):
     
     # Calcular estadísticas
     preguntas_respondidas = len(answers)
-    preguntas_correctas = sum(1 for a in answers if a.es_correcta)
-    tiempo_total = sum(a.tiempo_respuesta_segundos for a in answers if a.tiempo_respuesta_segundos)
+    preguntas_correctas = sum(1 for a in answers if cast(bool, a.es_correcta))
+    tiempos = [cast(int, a.tiempo_respuesta_segundos) for a in answers]  # type: ignore
+    tiempo_total = sum(tiempos) if tiempos else 0
     
     # Calcular puntuación (100 * aciertos / respondidas)
     puntuacion = (preguntas_correctas * 100 // preguntas_respondidas) if preguntas_respondidas > 0 else 0
     
-    session.fecha_fin = datetime.utcnow()
-    session.preguntas_respondidas = preguntas_respondidas
-    session.preguntas_correctas = preguntas_correctas
-    session.puntuacion_total = puntuacion
-    session.tiempo_total_segundos = tiempo_total if tiempo_total > 0 else None
-    session.estado = "completado"
+    session.fecha_fin = datetime.now(timezone.utc)  # type: ignore
+    session.preguntas_respondidas = preguntas_respondidas  # type: ignore
+    session.preguntas_correctas = preguntas_correctas  # type: ignore
+    session.puntuacion_total = puntuacion  # type: ignore
+    session.tiempo_total_segundos = tiempo_total if tiempo_total > 0 else None  # type: ignore
+    session.estado = "completado"  # type: ignore
     
     db.add(session)
     db.commit()
